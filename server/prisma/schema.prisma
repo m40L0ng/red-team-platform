@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(cuid())
+  name        String
+  email       String       @unique
+  password    String
+  role        Role         @default(operator)
+  createdAt   DateTime     @default(now())
+  engagements Engagement[] @relation("OperatorEngagements")
+  findings    Finding[]
+}
+
+model Engagement {
+  id          String     @id @default(cuid())
+  name        String
+  client      String
+  scope       String
+  status      Status     @default(planning)
+  startDate   DateTime
+  endDate     DateTime
+  operators   User[]     @relation("OperatorEngagements")
+  findings    Finding[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Finding {
+  id           String      @id @default(cuid())
+  title        String
+  description  String
+  severity     Severity
+  cvss         Float?
+  evidence     String?
+  status       FindingStatus @default(open)
+  engagement   Engagement  @relation(fields: [engagementId], references: [id])
+  engagementId String
+  reportedBy   User        @relation(fields: [userId], references: [id])
+  userId       String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+enum Role {
+  operator
+  lead
+  manager
+}
+
+enum Status {
+  planning
+  active
+  completed
+  archived
+}
+
+enum Severity {
+  critical
+  high
+  medium
+  low
+  informational
+}
+
+enum FindingStatus {
+  open
+  in_remediation
+  remediated
+  accepted
+}
