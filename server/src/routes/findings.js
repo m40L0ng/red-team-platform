@@ -4,27 +4,37 @@ const { authMiddleware, requireRole } = require('../middleware/auth');
 
 const prisma = new PrismaClient();
 
-// GET /api/findings?engagementId=&severity=&status=
+// GET /api/findings?engagementId=&severity=&status=&search=&page=&limit=
 router.get('/', authMiddleware, async (req, res) => {
-  const { engagementId, severity, status } = req.query;
+  const { engagementId, severity, status, search, page = '1', limit = '20' } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const take = parseInt(limit);
 
-  const findings = await prisma.finding.findMany({
-    where: {
-      ...(engagementId && { engagementId }),
-      ...(severity && { severity }),
-      ...(status && { status }),
-    },
-    orderBy: [
-      { severity: 'asc' },
-      { createdAt: 'desc' },
-    ],
-    include: {
-      engagement: { select: { id: true, name: true, client: true } },
-      reportedBy: { select: { id: true, name: true } },
-    },
-  });
+  const where = {
+    ...(search && { title: { contains: search, mode: 'insensitive' } }),
+    ...(engagementId && { engagementId }),
+    ...(severity && { severity }),
+    ...(status && { status }),
+  };
 
-  res.json({ findings });
+  const [findings, total] = await Promise.all([
+    prisma.finding.findMany({
+      where,
+      orderBy: [
+        { severity: 'asc' },
+        { createdAt: 'desc' },
+      ],
+      skip,
+      take,
+      include: {
+        engagement: { select: { id: true, name: true, client: true } },
+        reportedBy: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.finding.count({ where }),
+  ]);
+
+  res.json({ findings, total, page: parseInt(page), totalPages: Math.ceil(total / take) || 1 });
 });
 
 // GET /api/findings/:id

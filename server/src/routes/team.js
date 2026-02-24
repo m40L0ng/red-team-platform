@@ -5,21 +5,41 @@ const { authMiddleware, requireRole } = require('../middleware/auth');
 
 const prisma = new PrismaClient();
 
-// GET /api/team — list members with capacity data
+// GET /api/team?search=&role=&page=&limit=
 router.get('/', authMiddleware, async (req, res) => {
-  const members = await prisma.user.findMany({
-    orderBy: { createdAt: 'asc' },
-    select: {
-      id: true, name: true, email: true, role: true, createdAt: true,
-      _count: { select: { findings: true } },
-      engagements: {
-        where: { status: { in: ['planning', 'active'] } },
-        select: { id: true, name: true, status: true, endDate: true },
-      },
-    },
-  });
+  const { search, role, page = '1', limit = '20' } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const take = parseInt(limit);
 
-  res.json({ members });
+  const where = {
+    ...(search && {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ],
+    }),
+    ...(role && { role }),
+  };
+
+  const [members, total] = await Promise.all([
+    prisma.user.findMany({
+      where,
+      orderBy: { createdAt: 'asc' },
+      skip,
+      take,
+      select: {
+        id: true, name: true, email: true, role: true, createdAt: true,
+        _count: { select: { findings: true } },
+        engagements: {
+          where: { status: { in: ['planning', 'active'] } },
+          select: { id: true, name: true, status: true, endDate: true },
+        },
+      },
+    }),
+    prisma.user.count({ where }),
+  ]);
+
+  res.json({ members, total, page: parseInt(page), totalPages: Math.ceil(total / take) || 1 });
 });
 
 // GET /api/team/:id

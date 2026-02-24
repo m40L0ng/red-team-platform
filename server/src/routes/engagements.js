@@ -4,16 +4,37 @@ const { authMiddleware, requireRole } = require('../middleware/auth');
 
 const prisma = new PrismaClient();
 
-// GET /api/engagements
+// GET /api/engagements?search=&status=&page=&limit=
 router.get('/', authMiddleware, async (req, res) => {
-  const engagements = await prisma.engagement.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      operators: { select: { id: true, name: true } },
-      _count: { select: { findings: true } },
-    },
-  });
-  res.json({ engagements });
+  const { search, status, page = '1', limit = '20' } = req.query;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
+  const take = parseInt(limit);
+
+  const where = {
+    ...(search && {
+      OR: [
+        { name: { contains: search, mode: 'insensitive' } },
+        { client: { contains: search, mode: 'insensitive' } },
+      ],
+    }),
+    ...(status && { status }),
+  };
+
+  const [engagements, total] = await Promise.all([
+    prisma.engagement.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take,
+      include: {
+        operators: { select: { id: true, name: true } },
+        _count: { select: { findings: true } },
+      },
+    }),
+    prisma.engagement.count({ where }),
+  ]);
+
+  res.json({ engagements, total, page: parseInt(page), totalPages: Math.ceil(total / take) || 1 });
 });
 
 // GET /api/engagements/:id
