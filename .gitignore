@@ -29,8 +29,9 @@ Thumbs.db
 .idea/
 *.swp
 
-# Prisma
-server/prisma/migrations/
+# Prisma — migrations must be versioned, only ignore dev db file
+*.db
+*.db-journal
 
 # Reports (sensitive output)
 reports/*.pdf
