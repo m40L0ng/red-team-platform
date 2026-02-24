@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import EvidencePanel from './EvidencePanel';
 
 const SEVERITIES = ['critical', 'high', 'medium', 'low', 'informational'];
 const STATUSES   = ['open', 'in_remediation', 'remediated', 'accepted'];
@@ -134,13 +135,24 @@ export default function FindingModal({ finding, engagements, onClose, onSave }) 
           </div>
 
           <div>
-            <label className="block text-sm text-gray-400 mb-1">Evidence <span className="text-gray-600">(optional)</span></label>
+            <label className="block text-sm text-gray-400 mb-1">
+              Evidence notes <span className="text-gray-600">(optional)</span>
+            </label>
             <textarea
               name="evidence" value={form.evidence} onChange={handleChange} rows={3}
               className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 resize-none"
-              placeholder="PoC, screenshots, request/response, CVE references..."
+              placeholder="PoC commands, request/response, CVE references..."
             />
           </div>
+
+          {/* File evidence — only available after the finding is created */}
+          {finding ? (
+            <EvidencePanel findingId={finding.id} />
+          ) : (
+            <p className="text-xs text-gray-600 bg-gray-800/40 border border-gray-800 rounded-lg px-3 py-2">
+              Save the finding first to attach screenshot and file evidence.
+            </p>
+          )}
 
           <div className="flex justify-end gap-3 pt-2">
             <button
