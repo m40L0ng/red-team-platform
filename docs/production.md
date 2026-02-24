@@ -95,6 +95,25 @@ make status    # PM2 status
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | Random 64-char secret for signing tokens |
 
+## Nginx reverse proxy (HTTPS)
+
+A ready-to-use config is at `nginx.conf` in the project root.
+
+```bash
+# Copy and enable
+sudo cp nginx.conf /etc/nginx/sites-available/red-team
+sudo ln -s /etc/nginx/sites-available/red-team /etc/nginx/sites-enabled/
+
+# Edit server_name and SSL cert paths, then:
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+For free TLS certificates use Certbot:
+```bash
+sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d your.domain.com
+```
+
 ## Health check
 
 ```bash
