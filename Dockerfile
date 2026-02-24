@@ -13,16 +13,25 @@ COPY client/ ./
 RUN npm run build
 
 # ── Stage 2: Production server ───────────────────────────────────────────────
-FROM node:20-alpine
+# node:20-slim (Debian) has libssl3 pre-installed, which Prisma's schema
+# engine requires at runtime for prisma migrate deploy.
+# node:20-alpine was avoided because apk HTTPS is blocked by the proxy
+# and alpine lacks a compatible libssl for Prisma's native binary.
+FROM node:20-slim
 
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 RUN npm config set strict-ssl false
 
+# openssl required by Prisma's schema engine (migrate deploy)
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends openssl && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Install server production dependencies
-# NODE_TLS_REJECT_UNAUTHORIZED=0: Prisma's postinstall downloads engine binaries
-# from binaries.prisma.sh through the SSL-inspection proxy
+# NODE_TLS_REJECT_UNAUTHORIZED=0: Prisma's postinstall downloads engine
+# binaries from binaries.prisma.sh through the SSL-inspection proxy
 COPY server/package*.json ./server/
 RUN cd server && NODE_TLS_REJECT_UNAUTHORIZED=0 npm ci --omit=dev
 
