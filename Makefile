@@ -1,6 +1,7 @@
 ## Red Team Platform — production commands
 
-.PHONY: install build start stop restart logs
+.PHONY: install build start stop restart logs \
+        docker-up docker-down docker-build docker-logs docker-shell
 
 install:
 	cd server && npm install --omit=dev
@@ -26,3 +27,20 @@ migrate:
 
 status:
 	pm2 status
+
+## ── Docker ──────────────────────────────────────────────────────────────────
+
+docker-up:
+	docker compose up -d
+
+docker-down:
+	docker compose down
+
+docker-build:
+	docker compose build --no-cache
+
+docker-logs:
+	docker compose logs -f app
+
+docker-shell:
+	docker compose exec app sh
