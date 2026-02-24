@@ -2,6 +2,7 @@
   "name": "red-team-platform-client",
   "version": "1.0.0",
   "description": "Red Team Management Platform - Frontend",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
