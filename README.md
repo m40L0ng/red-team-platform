@@ -2,6 +2,8 @@
 
 A management platform for Red Team operations — track engagements, manage team capacity, log findings with evidence, and generate professional reports.
 
+> **Languages:** English · [Português](README.pt-BR.md)
+
 ## Features
 
 - **Engagement Management** — Full CRUD with status tracking (planning → active → completed → archived), date ranges, and operator assignment
