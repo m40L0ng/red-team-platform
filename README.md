@@ -59,33 +59,100 @@ red-team-platform/
 
 ## Running with Docker (recommended)
 
-```bash
-# 1. Copy and configure environment
-cp .env.example .env
-# Edit .env — set JWT_SECRET and POSTGRES_PASSWORD
+The Docker stack runs three containers, each with a single responsibility:
 
-# 2. Start the full stack (db + app + nginx)
-docker compose up -d
-
-# 3. Check status
-docker compose ps
-docker compose logs app
-
-# 4. Stop
-docker compose down
+```
+Browser
+  └── redteam_frontend :80  (nginx — serves React SPA, proxies /api/* → api)
+        └── redteam_api      (Express — REST API only)
+              └── redteam_db (PostgreSQL)
 ```
 
-The stack exposes port `80`. In production, put a TLS-terminating Nginx in front using the provided `nginx.conf`.
+### Quickstart
+
+```bash
+# 1. Clone
+git clone https://github.com/m40L0ng/red-team-platform.git
+cd red-team-platform
+
+# 2. Configure environment
+cp .env.example .env
+```
+
+Edit `.env` and set at minimum:
+
+```env
+JWT_SECRET=<paste 64-char hex string here>
+POSTGRES_PASSWORD=<strong password>
+```
+
+Generate a secure JWT secret:
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+```bash
+# 3. Build and start everything
+docker compose up -d
+
+# 4. Check that all three containers are healthy
+docker compose ps
+```
+
+Expected output:
+```
+NAME               SERVICE    STATUS              PORTS
+redteam_db         db         Up (healthy)        5432/tcp
+redteam_api        api        Up (healthy)        3001/tcp
+redteam_frontend   frontend   Up                  0.0.0.0:80->80/tcp
+```
+
+Open **http://localhost** in your browser and register the first user.
+
+### Useful commands
+
+```bash
+docker compose logs -f api        # API logs (migrations + requests)
+docker compose logs -f frontend   # nginx access logs
+docker compose exec api sh        # shell inside the API container
+docker compose down               # stop and remove containers
+docker compose down -v            # stop + delete database volume
+docker compose build --no-cache   # rebuild images from scratch
+```
 
 ### Make shortcuts
 
 ```bash
 make docker-up       # docker compose up -d
 make docker-down     # docker compose down
-make docker-build    # rebuild images from scratch
-make docker-logs     # tail app logs
-make docker-shell    # open shell inside app container
+make docker-build    # rebuild from scratch
+make docker-logs     # tail API logs
+make docker-shell    # shell inside API container
 ```
+
+### Updating
+
+```bash
+git pull
+docker compose build --no-cache
+docker compose up -d
+```
+
+Migrations run automatically on startup — no manual step needed.
+
+### Production (HTTPS)
+
+Put the host-level Nginx in front for SSL termination:
+
+```bash
+sudo cp nginx.conf /etc/nginx/sites-available/red-team
+sudo ln -s /etc/nginx/sites-available/red-team /etc/nginx/sites-enabled/
+# Edit server_name in nginx.conf, then:
+sudo certbot --nginx -d your.domain.com
+sudo systemctl reload nginx
+```
+
+Also set `CLIENT_URL=https://your.domain.com` in your `.env` for CORS.
 
 ## Running locally (development)
 
