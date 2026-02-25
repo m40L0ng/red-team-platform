@@ -32,7 +32,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-redteam}:${POSTGRES_PASSWORD:-redteam_secret}@db:5432/${POSTGRES_DB:-redteam}
       JWT_SECRET:   ${JWT_SECRET:?JWT_SECRET is required}
       # Origin allowed by CORS — must match the URL users access the app from
-      CLIENT_URL:   ${CLIENT_URL:-http://localhost}
+      CLIENT_URL:   ${CLIENT_URL:-https://localhost}
     volumes:
       - uploads:/app/server/uploads/evidence
     healthcheck:
@@ -56,6 +56,9 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - certs:/etc/nginx/certs
     depends_on:
       api:
         condition: service_healthy
@@ -65,6 +68,7 @@ services:
 volumes:
   postgres_data:
   uploads:
+  certs:
 
 networks:
   internal:

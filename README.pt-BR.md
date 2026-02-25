@@ -65,10 +65,12 @@ O stack Docker executa três containers, cada um com uma responsabilidade única
 
 ```
 Navegador
-  └── redteam_frontend :80  (nginx — serve React SPA, faz proxy de /api/* → api)
-        └── redteam_api      (Express — somente API REST)
-              └── redteam_db (PostgreSQL)
+  └── redteam_frontend :443  (nginx — HTTPS, serve React SPA, faz proxy de /api/* → api)
+        └── redteam_api       (Express — somente API REST)
+              └── redteam_db  (PostgreSQL)
 ```
+
+**HTTPS está habilitado por padrão.** Na primeira inicialização, o nginx gera automaticamente um certificado autoassinado armazenado no volume Docker `certs` (persiste entre reinicializações). HTTP na porta 80 redireciona para HTTPS. Consulte [Certificados SSL](#certificados-ssl) para usar um certificado real.
 
 ### Início Rápido
 
@@ -106,10 +108,12 @@ Saída esperada:
 NAME               SERVICE    STATUS              PORTS
 redteam_db         db         Up (healthy)        5432/tcp
 redteam_api        api        Up (healthy)        3001/tcp
-redteam_frontend   frontend   Up                  0.0.0.0:80->80/tcp
+redteam_frontend   frontend   Up                  0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
 ```
 
-Abra **http://localhost** no navegador e registre o primeiro usuário.
+Abra **https://localhost** no navegador e registre o primeiro usuário.
+
+> **Aviso de certificado autoassinado:** O navegador exibirá um aviso de segurança na primeira visita (esperado para certificados autoassinados). Clique em **Avançado → Continuar para localhost** para prosseguir. Consulte [Certificados SSL](#certificados-ssl) para usar um certificado confiável.
 
 ### Comandos Úteis
 
@@ -142,9 +146,25 @@ docker compose up -d
 
 As migrations são executadas automaticamente na inicialização — nenhuma etapa manual necessária.
 
-### Produção (HTTPS)
+### Certificados SSL
 
-Coloque o Nginx do host na frente para terminação SSL:
+#### Padrão: certificado autoassinado gerado automaticamente
+
+Na primeira inicialização, o container do frontend gera um certificado RSA-2048 autoassinado (válido por 10 anos) e o armazena no volume Docker `certs`. O certificado persiste entre reinicializações e é reutilizado automaticamente.
+
+#### Usando Let's Encrypt (produção)
+
+Monte seus certificados Let's Encrypt diretamente no volume `certs`:
+
+```yaml
+# No docker-compose.yml, substitua o volume nomeado certs por bind mounts:
+frontend:
+  volumes:
+    - /etc/letsencrypt/live/seu.dominio.com/fullchain.pem:/etc/nginx/certs/cert.pem:ro
+    - /etc/letsencrypt/live/seu.dominio.com/privkey.pem:/etc/nginx/certs/key.pem:ro
+```
+
+Ou use o Nginx do host para terminação SSL (veja `nginx.conf` na raiz do repositório):
 
 ```bash
 sudo cp nginx.conf /etc/nginx/sites-available/red-team

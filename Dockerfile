@@ -12,10 +12,21 @@ COPY client/ ./
 RUN npm run build
 
 # ── Stage 2: Frontend container (nginx serves React + proxies API) ────────────
-FROM nginx:1.27-alpine AS frontend
+# Using Debian-based nginx so we can install openssl for self-signed cert generation
+FROM nginx:1.27 AS frontend
+
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends openssl && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=frontend-build /build/client/dist /usr/share/nginx/html
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx.conf     /etc/nginx/conf.d/default.conf
+COPY docker/entrypoint.sh  /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE 443
+
+ENTRYPOINT ["/entrypoint.sh"]
 
 # ── Stage 3: API container (Express) ─────────────────────────────────────────
 FROM node:20-slim AS api

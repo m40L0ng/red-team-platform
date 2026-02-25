@@ -65,10 +65,12 @@ The Docker stack runs three containers, each with a single responsibility:
 
 ```
 Browser
-  └── redteam_frontend :80  (nginx — serves React SPA, proxies /api/* → api)
-        └── redteam_api      (Express — REST API only)
-              └── redteam_db (PostgreSQL)
+  └── redteam_frontend :443  (nginx — HTTPS, serves React SPA, proxies /api/* → api)
+        └── redteam_api       (Express — REST API only)
+              └── redteam_db  (PostgreSQL)
 ```
+
+**HTTPS is enabled by default.** On first start, nginx automatically generates a self-signed certificate stored in the `certs` Docker volume (persists across restarts). HTTP on port 80 redirects to HTTPS. See [SSL Certificates](#ssl-certificates) to swap in a real certificate.
 
 ### Quickstart
 
@@ -106,10 +108,12 @@ Expected output:
 NAME               SERVICE    STATUS              PORTS
 redteam_db         db         Up (healthy)        5432/tcp
 redteam_api        api        Up (healthy)        3001/tcp
-redteam_frontend   frontend   Up                  0.0.0.0:80->80/tcp
+redteam_frontend   frontend   Up                  0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
 ```
 
-Open **http://localhost** in your browser and register the first user.
+Open **https://localhost** in your browser and register the first user.
+
+> **Self-signed certificate warning:** The browser will show a security warning on the first visit (expected for self-signed certs). Click **Advanced → Proceed to localhost** to continue. See [SSL Certificates](#ssl-certificates) to use a trusted certificate.
 
 ### Useful commands
 
@@ -142,9 +146,25 @@ docker compose up -d
 
 Migrations run automatically on startup — no manual step needed.
 
-### Production (HTTPS)
+### SSL Certificates
 
-Put the host-level Nginx in front for SSL termination:
+#### Default: auto-generated self-signed certificate
+
+On first start, the frontend container generates a self-signed RSA-2048 certificate (valid 10 years) and stores it in the `certs` Docker volume. The cert persists across restarts and is reused automatically.
+
+#### Using Let's Encrypt (production)
+
+Mount your Let's Encrypt certificates directly into the `certs` volume:
+
+```yaml
+# In docker-compose.yml, replace the named certs volume with bind mounts:
+frontend:
+  volumes:
+    - /etc/letsencrypt/live/your.domain.com/fullchain.pem:/etc/nginx/certs/cert.pem:ro
+    - /etc/letsencrypt/live/your.domain.com/privkey.pem:/etc/nginx/certs/key.pem:ro
+```
+
+Or use the host-level Nginx for SSL termination (see `nginx.conf` in the repo root):
 
 ```bash
 sudo cp nginx.conf /etc/nginx/sites-available/red-team
@@ -154,7 +174,7 @@ sudo certbot --nginx -d your.domain.com
 sudo systemctl reload nginx
 ```
 
-Also set `CLIENT_URL=https://your.domain.com` in your `.env` for CORS.
+Set `CLIENT_URL=https://your.domain.com` in your `.env` for CORS.
 
 ## Running locally (development)
 
